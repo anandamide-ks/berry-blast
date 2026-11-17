@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Private cycle tracker. Your entries stay on this device. anandamide.ks">
+<meta name="theme-color" content="#F4F1F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1A121F" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cycle Tracker">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="author" content="anandamide.ks">
+<title>Cycle Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Libre+Franklin:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=UnifrakturCook:wght@700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: the cycle is a ring, so the page opens on a dial of the current cycle;
+   below it a month calendar sits beside the day editor, then averages and history. */
+:root{
+  --paper:#F4F1F7; --card:#FFFFFF; --ink:#2B1A36; --muted:#6E6078; --line:#E2DCE8;
+  --period:#C4284F; --on-period:#FFFFFF; --fertile:#1E8C83; --ovu:#C98612; --heart:#1F5FD1; --heart-on-period:#CFE4FF;
+  --display:"Source Serif 4", "Georgia", "Times New Roman", serif;
+  --body:"Libre Franklin", "Franklin Gothic Medium", "Helvetica Neue", Arial, sans-serif;
+  --mast:"UnifrakturCook", "Old English Text MT", "Source Serif 4", Georgia, serif;
+  --hand:"Caveat", "Segoe Print", "Bradley Hand", cursive;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#1A121F; --card:#241A2B; --ink:#F1EAF5; --muted:#A99BB3; --line:#3A2D43;
+    --period:#EC5C7E; --on-period:#1A121F; --fertile:#4CC2B7; --ovu:#EDB44A; --heart:#7FB2FF; --heart-on-period:#0F3A99;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#1A121F; --card:#241A2B; --ink:#F1EAF5; --muted:#A99BB3; --line:#3A2D43;
+  --period:#EC5C7E; --on-period:#1A121F; --fertile:#4CC2B7; --ovu:#EDB44A; --heart:#7FB2FF; --heart-on-period:#0F3A99;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);background-image:
+  radial-gradient(circle at 24px 30px,color-mix(in srgb,var(--ovu) 60%,transparent) 1.3px,transparent 1.8px),
+  radial-gradient(circle at 104px 118px,color-mix(in srgb,var(--period) 45%,transparent) 1.1px,transparent 1.6px),
+  radial-gradient(circle at 156px 62px,color-mix(in srgb,var(--fertile) 50%,transparent) 1.3px,transparent 1.8px);
+  background-size:190px 170px;background-color:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));display:flex;flex-direction:column;gap:20px}
+header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.headline,.edate,.calhead .m{font-weight:700;letter-spacing:-.012em}
+.dial .big,.stat .n{font-weight:600}
+.mark{font-family:var(--mast);font-weight:700;font-size:32px;line-height:1.1;display:flex;align-items:center;gap:8px;text-decoration:underline wavy var(--period);text-decoration-thickness:1.5px;text-underline-offset:7px}
+.mark svg{width:22px;height:22px;flex:none}
+.tagline{font-family:var(--hand);font-size:25px;line-height:1.15;color:var(--period);margin:0;transform:rotate(-1.2deg);transform-origin:left center}
+.catrow{display:flex;align-items:flex-end;gap:10px}
+.catbtn{background:none;border:0;padding:0;width:92px;flex:none;border-radius:16px}
+.catbtn svg{display:block;width:100%;height:auto;overflow:visible}
+.bubble{position:relative;background:var(--paper);border:1.5px solid var(--line);border-radius:18px 18px 18px 4px;padding:8px 14px 9px;margin-bottom:22px;font-family:var(--hand);font-size:23px;line-height:1.15;color:var(--period)}
+.bubble small{display:block;font-family:var(--body);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.tail{transform-box:fill-box;transform-origin:10% 90%}
+.blink{transform-box:fill-box;transform-origin:center}
+@keyframes swish{0%,100%{transform:rotate(0)}50%{transform:rotate(14deg)}}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+.hand{font-family:var(--hand);font-size:20px;line-height:1.2;color:var(--muted)}
+.tw{transform-box:fill-box;transform-origin:center}
+.fx{position:fixed;left:0;top:0;pointer-events:none;z-index:9;font-size:15px;line-height:1;animation:fly .75s ease-out forwards}
+@keyframes fly{from{transform:translate(var(--x),var(--y)) scale(.6);opacity:1}to{transform:translate(calc(var(--x) + var(--dx)),calc(var(--y) + var(--dy))) scale(1.25) rotate(var(--r));opacity:0}}
+@keyframes twinkle{0%,100%{opacity:.25;transform:scale(.7)}50%{opacity:1;transform:scale(1.15)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes pop{0%{transform:scale(.88)}60%{transform:scale(1.08) rotate(-2deg)}100%{transform:scale(1)}}
+@keyframes beat{0%,100%{transform:scale(1)}40%{transform:scale(1.5)}}
+.status{font-size:13px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+h2{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+
+/* hero */
+.hero{display:grid;grid-template-columns:260px 1fr;gap:28px;align-items:center}
+.dial{position:relative;width:100%;max-width:260px;margin:0 auto}
+.dial svg{display:block;width:100%;height:auto}
+.dial .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 44px}
+.dial .big{font-family:var(--display);font-size:54px;line-height:1}
+.dial .lab{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.dial .phase{font-size:14px;font-weight:600;margin-top:4px}
+.facts{display:flex;flex-direction:column;gap:14px}
+.headline{font-family:var(--display);font-size:30px;line-height:1.15;margin:0;text-wrap:balance}
+.factrow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.fact{border-left:3px solid var(--line);padding-left:10px}
+.fact.p{border-color:var(--period)} .fact.f{border-color:var(--fertile)} .fact.o{border-color:var(--ovu)}
+.fact .k{font-size:12px;color:var(--muted)}
+.fact .v{font-weight:600;font-variant-numeric:tabular-nums}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 16px;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--period);border-color:var(--period);color:var(--on-period)}
+.btn.danger{border-color:var(--period);color:var(--period)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.small{font-size:13px;color:var(--muted)}
+
+/* onboarding */
+.onb{display:flex;flex-direction:column;gap:12px}
+.fields{display:flex;gap:12px;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.field input{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--ink);min-width:0}
+.field input[type=number]{width:110px}
+
+/* calendar + editor */
+.two{display:grid;grid-template-columns:1.25fr 1fr;gap:20px;align-items:start}
+.calhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.calhead .m{font-family:var(--display);font-size:22px}
+.nav{border:1px solid var(--line);background:var(--card);border-radius:8px;width:36px;height:36px;font-size:18px;line-height:1}
+.nav:hover{border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:center;padding:4px 0}
+.d{position:relative;aspect-ratio:1;min-height:40px;border:1.5px solid transparent;border-radius:10px;background:transparent;font-variant-numeric:tabular-nums;font-weight:500;padding:0}
+.d:hover{border-color:var(--muted)}
+.d.out{color:var(--muted);opacity:.55}
+.d.fert{background:color-mix(in srgb,var(--fertile) 18%,var(--card))}
+.d.ovu{box-shadow:inset 0 0 0 2.5px var(--ovu)}
+.d.pred{border:1.5px dashed var(--period)}
+.d.f1::after{content:"";position:absolute;left:50%;bottom:5px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--period)}
+.d.f2{background:color-mix(in srgb,var(--period) 30%,var(--card))}
+.d.f3{background:color-mix(in srgb,var(--period) 72%,var(--card));color:var(--on-period)}
+.d.f4{background:var(--period);color:var(--on-period)}
+.d.today{font-weight:700;border-radius:58% 42% 55% 45% / 46% 56% 44% 54%;outline:2px solid var(--ink);outline-offset:-4px}
+.d.sel{border:2px solid var(--ink)}
+.d.note::before{content:"";position:absolute;right:5px;top:5px;width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
+.sx{position:absolute;left:4px;top:2px;font-size:10px;font-style:normal;line-height:1.2;color:var(--heart)}
+.d.f3 .sx,.d.f4 .sx{color:var(--heart-on-period)}
+.sxl{font-style:normal;font-size:12px;color:var(--heart)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:4px;display:inline-block}
+.sw.p{background:var(--period)} .sw.pr{border:1.5px dashed var(--period)}
+.sw.f{background:color-mix(in srgb,var(--fertile) 30%,var(--card))} .sw.o{box-shadow:inset 0 0 0 2.5px var(--ovu)}
+
+.edate{font-family:var(--display);font-size:24px;line-height:1.2;margin:0}
+.editor{display:flex;flex-direction:column;gap:16px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:6px 12px;font-size:14px}
+.chip:hover{border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.seg .chip[aria-pressed="true"]{background:var(--period);border-color:var(--period);color:var(--on-period)}
+.lbl{font-size:13px;font-weight:600;margin-bottom:6px}
+textarea{width:100%;min-height:72px;resize:vertical;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat .n{font-family:var(--display);font-size:32px;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat .u{font-size:13px;color:var(--muted)}
+.hist{display:flex;flex-direction:column;gap:8px}
+.h{display:grid;grid-template-columns:120px 1fr 90px;gap:12px;align-items:center;font-size:14px;font-variant-numeric:tabular-nums}
+.bar{height:12px;border-radius:6px;background:var(--line);position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:color-mix(in srgb,var(--ink) 35%,var(--card));border-radius:6px}
+.bar b{position:absolute;left:0;top:0;bottom:0;background:var(--period);border-radius:6px}
+.h .r{text-align:right;color:var(--muted)}
+details summary{cursor:pointer;font-weight:600}
+details .inner{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+label.btn{cursor:pointer;display:inline-block}
+footer{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+footer p{margin:0;max-width:65ch}
+@media (max-width:760px){
+  .hero{grid-template-columns:1fr;gap:16px}
+  .two{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .factrow{grid-template-columns:1fr}
+  .h{grid-template-columns:92px 1fr 70px}
+  .headline{font-size:25px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .d,.chip,.btn,.nav{transition:border-color .12s, background-color .12s, transform .15s}
+  .d:hover{transform:rotate(-5deg) scale(1.1)}
+  .chip:hover,.btn:hover{transform:translateY(-1px) rotate(-1.5deg)}
+  .nav:hover{transform:scale(1.1)}
+  .catbtn{transition:transform .15s}
+  .catbtn:hover{transform:scale(1.06) rotate(-3deg)}
+  .tail{animation:swish 2.6s ease-in-out infinite}
+  .blink{animation:blink 5s linear infinite}
+  .pop{animation:pop .28s ease-out}
+  .d:hover .sx{animation:beat .5s ease-in-out}
+  .sx{display:inline-block}
+  .tw{animation:twinkle 3.2s ease-in-out infinite}
+  .moon{animation:bob 4s ease-in-out infinite}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="mark"><svg viewBox="-12 -12 24 24" aria-hidden="true"><path d="M3 -9 A10 10 0 1 0 3 9 A11.5 11.5 0 0 1 3 -9Z" fill="var(--ovu)"/></svg>Cycle Tracker</div>
+    <div class="status" id="status" role="status">Loading your log…</div>
+  </header>
+  <section class="card" id="hero"></section>
+  <div class="two">
+    <section class="card" id="cal"></section>
+    <section class="card" id="editor"></section>
+  </div>
+  <section class="card" id="stats"></section>
+  <section class="card" id="history"></section>
+  <section class="card">
+    <details id="settings">
+      <summary id="settings-sum">Settings and data</summary>
+      <div class="inner" id="settings-inner"></div>
+    </details>
+  </section>
+  <footer>
+    <p>Predictions are calendar estimates from your own logged cycles. Ovulation is placed 14 days before the next expected period, so treat the fertile window as a guide and never as contraception.</p>
+    <p class="hand">supervised by Mr Idli Billu Bhayankar Sanyal · anandamide.ks</p>
+  </footer>
+</div>
+<script>
+(function(){
+"use strict";
+var DAY=864e5, LS="cycle-tracker-v1";
+var FLOW=["None","Spotting","Light","Medium","Heavy"];
+var SEX=["Protected","Unprotected","Withdrawal","Solo","Emergency contraceptive"];
+var SYMPTOMS=["Cramps","Headache","Bloating","Breast tenderness","Back pain","Acne","Fatigue","Nausea","Cravings","Poor sleep","Low mood","Irritable","Anxious"];
+var data={days:{},settings:{cycle:28,period:5},sound:true};
+var popId=null, ready=false, store=null, saving=false, dirty=false, timer=null, confirmDelete=false;
+
+function pad(x){return (x<10?"0":"")+x}
+function num(k){var p=k.split("-");return Math.round(Date.UTC(+p[0],+p[1]-1,+p[2])/DAY)}
+function key(n){var d=new Date(n*DAY);return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate())}
+function todayN(){var d=new Date();return num(d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()))}
+function fmt(n,o){return new Date(n*DAY).toLocaleDateString("en-IN",Object.assign({timeZone:"UTC"},o||{day:"numeric",month:"short"}))}
+function mean(a){return a.reduce(function(s,x){return s+x},0)/a.length}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function clampInt(v,lo,hi,def){v=parseInt(v,10);return isNaN(v)?def:Math.min(hi,Math.max(lo,v))}
+function $(id){return document.getElementById(id)}
+
+var T=todayN(), sel=T;
+var vd=new Date(T*DAY), view={y:vd.getUTCFullYear(),m:vd.getUTCMonth()};
+
+/* ---------- analysis ---------- */
+function analyse(){
+  var pd=Object.keys(data.days).filter(function(k){return data.days[k].f>=2}).map(num).sort(function(a,b){return a-b});
+  var cycles=[];
+  pd.forEach(function(n){
+    var c=cycles[cycles.length-1];
+    if(!c||n-c.end>10) cycles.push({start:n,end:n}); else c.end=n;
+  });
+  cycles.forEach(function(c,i){
+    c.plen=c.end-c.start+1;
+    c.len=cycles[i+1]?cycles[i+1].start-c.start:null;
+  });
+  var lens=cycles.map(function(c){return c.len}).filter(function(l){return l&&l>=15&&l<=60});
+  var recent=lens.slice(-6);
+  var avg=recent.length?Math.round(mean(recent)):data.settings.cycle;
+  var done=cycles.filter(function(c){return c.end<T-2}).slice(-6).map(function(c){return c.plen});
+  var pavg=done.length?Math.max(1,Math.round(mean(done))):data.settings.period;
+  var last=cycles[cycles.length-1]||null;
+  var A={cycles:cycles,lens:lens,avg:avg,pavg:pavg,last:last,fromLog:recent.length>0,pred:{},fert:{},ovu:{}};
+  function window_(ov){A.ovu[ov]=1;for(var d=ov-5;d<=ov+1;d++)A.fert[d]=1}
+  cycles.forEach(function(c){if(c.len&&c.len>=15&&c.len<=60)window_(c.start+c.len-14)});
+  if(last){
+    A.next=last.start+avg; A.ov=A.next-14;
+    for(var k=0;k<6;k++){
+      var s=last.start+k*avg;
+      window_(s+avg-14);
+      if(k>0) for(var d=s;d<s+pavg;d++) if(d>=T) A.pred[d]=1;
+    }
+  }
+  return A;
+}
+function phaseOf(A){
+  if(!A.last) return null;
+  var cd=T-A.last.start+1, f=(data.days[key(T)]||{}).f||0;
+  if(f>=2||cd<=A.last.plen&&T<=A.last.end) return "Period";
+  if(T>=A.next) return "Period due";
+  if(T===A.ov) return "Estimated ovulation";
+  if(T>=A.ov-5&&T<=A.ov+1) return "Fertile window";
+  if(T<A.ov-5) return "Follicular phase";
+  return "Luteal phase";
+}
+
+/* ---------- storage ---------- */
+function setStatus(t){$("status").textContent=t}
+function savedText(){return "Tucked away on this device"}
+var calm=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+var actx=null, purrUntil=0;
+function purr(){
+  if(data.sound===false) return;
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext;if(!AC) return;
+    actx=actx||new AC();
+    if(actx.state==="suspended") actx.resume();
+    var t=actx.currentTime+0.02, dur=1.05;
+    if(t<purrUntil) return; purrUntil=t+dur;
+    var osc=actx.createOscillator();osc.type="sawtooth";
+    osc.frequency.setValueAtTime(300,t);
+    osc.frequency.linearRampToValueAtTime(455,t+0.2);
+    osc.frequency.linearRampToValueAtTime(420,t+0.55);
+    osc.frequency.exponentialRampToValueAtTime(235,t+dur);
+    var vib=actx.createOscillator();vib.frequency.value=6;
+    var vg=actx.createGain();vg.gain.setValueAtTime(0,t);vg.gain.linearRampToValueAtTime(7,t+0.6);
+    vib.connect(vg);vg.connect(osc.frequency);
+    var f1=actx.createBiquadFilter();f1.type="bandpass";f1.Q.value=5;
+    f1.frequency.setValueAtTime(420,t);f1.frequency.linearRampToValueAtTime(700,t+0.15);
+    f1.frequency.linearRampToValueAtTime(1050,t+0.45);f1.frequency.linearRampToValueAtTime(480,t+dur);
+    var f2=actx.createBiquadFilter();f2.type="bandpass";f2.Q.value=7;
+    f2.frequency.setValueAtTime(1500,t);f2.frequency.linearRampToValueAtTime(2400,t+0.15);
+    f2.frequency.linearRampToValueAtTime(1700,t+0.45);f2.frequency.linearRampToValueAtTime(850,t+dur);
+    var g2=actx.createGain();g2.gain.value=0.6;
+    var body=actx.createBiquadFilter();body.type="lowpass";body.frequency.value=900;
+    var gb=actx.createGain();gb.gain.value=0.12;
+    var env=actx.createGain();
+    env.gain.setValueAtTime(0,t);
+    env.gain.linearRampToValueAtTime(0.25,t+0.06);
+    env.gain.linearRampToValueAtTime(0.8,t+0.3);
+    env.gain.linearRampToValueAtTime(0.6,t+0.65);
+    env.gain.linearRampToValueAtTime(0,t+dur);
+    osc.connect(f1);f1.connect(env);
+    osc.connect(f2);f2.connect(g2);g2.connect(env);
+    osc.connect(body);body.connect(gb);gb.connect(env);
+    env.connect(actx.destination);
+    [osc,vib].forEach(function(n){n.start(t);n.stop(t+dur+0.05)});
+  }catch(e){}
+}
+function burst(el,glyph,color){
+  if(calm||!el) return;
+  var b=el.getBoundingClientRect(), x=b.left+b.width/2, y=b.top+b.height/2;
+  for(var i=0;i<8;i++){
+    var p=document.createElement("span"), a=i/8*2*Math.PI+Math.random()*.6, d=34+Math.random()*30;
+    p.className="fx";p.textContent=glyph;p.style.color=color;
+    p.style.setProperty("--x",(x-6)+"px");p.style.setProperty("--y",(y-8)+"px");
+    p.style.setProperty("--dx",(Math.cos(a)*d).toFixed(0)+"px");p.style.setProperty("--dy",(Math.sin(a)*d-14).toFixed(0)+"px");
+    p.style.setProperty("--r",(Math.random()*120-60).toFixed(0)+"deg");
+    p.addEventListener("animationend",function(){this.remove()});
+    document.body.appendChild(p);
+  }
+}
+function queueSave(){dirty=true;setStatus("Saving…");clearTimeout(timer);timer=setTimeout(flush,600)}
+async function flush(){
+  if(saving) return; saving=true;
+  while(dirty){
+    dirty=false;
+    try{
+      var body=JSON.parse(JSON.stringify(data));
+      if(store) await store.set(body); else localStorage.setItem(LS,JSON.stringify(body));
+      if(!dirty) setStatus(savedText());
+    }catch(e){
+      if(store&&e&&e.code!=="quota_exceeded"&&e.code!=="unavailable"&&e.code!=="resource_exhausted"){store=null;dirty=true;continue}
+      setStatus(e&&e.code==="quota_exceeded"?"Storage is full, so this change was not saved.":"Could not save that change. It will retry on your next edit.");
+    }
+  }
+  saving=false;
+}
+function adopt(o){
+  if(!o||typeof o!=="object") return;
+  o=JSON.parse(JSON.stringify(o));
+  if(o.days&&typeof o.days==="object") data.days=o.days;
+  data.sound=o.sound!==false;
+  if(o.settings) data.settings={cycle:clampInt(o.settings.cycle,15,60,28),period:clampInt(o.settings.period,1,12,5)};
+}
+async function boot(){
+  try{adopt(JSON.parse(localStorage.getItem(LS)||"null"))}catch(e){}
+  ready=true;
+  setStatus("Your log lives on this device");
+  render();
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+  if("serviceWorker" in navigator&&location.protocol!=="file:"){navigator.serviceWorker.register("sw.js").catch(function(){})}
+}
+
+/* ---------- edits ---------- */
+function dayRec(n){var r=data.days[key(n)]||{};return {f:r.f||0,s:(r.s||[]).slice(),x:(r.x||[]).slice(),n:r.n||""}}
+function isEmpty(r){return !r.f&&!r.s.length&&!r.x.length&&!r.n}
+function putDay(n,rec){var k=key(n);if(isEmpty(rec)) delete data.days[k]; else data.days[k]=rec;queueSave()}
+function setFlow(n,f){var r=dayRec(n);r.f=f;putDay(n,r)}
+function toggle(n,field,v){var r=dayRec(n),i=r[field].indexOf(v);if(i>=0)r[field].splice(i,1);else r[field].push(v);putDay(n,r)}
+
+/* ---------- render ---------- */
+function arc(a,b,total,color,w){
+  var r=92, C=2*Math.PI*r, len=Math.max(0,(b-a)/total*C);
+  return '<circle cx="120" cy="120" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="'+w+'" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-a/total*C).toFixed(2)+'" transform="rotate(-90 120 120)"/>';
+}
+function pt(frac,r){var a=frac*2*Math.PI-Math.PI/2;return [120+r*Math.cos(a),120+r*Math.sin(a)]}
+function dial(A,cd,phase){
+  var n=A.avg, p=Math.min(A.pavg,n), f0=Math.max(p,n-19), f1=Math.max(f0,n-12), ovc=n-13.5;
+  var s='<svg viewBox="0 0 240 240" role="img" aria-label="Cycle dial">'+
+    '<circle cx="120" cy="120" r="92" fill="none" stroke="var(--line)" stroke-width="14"/>'+
+    arc(0,p,n,"var(--period)",14)+arc(f0,f1,n,"var(--fertile)",14);
+  if(ovc>p){var o=pt(ovc/n,92);s+='<circle cx="'+o[0].toFixed(1)+'" cy="'+o[1].toFixed(1)+'" r="6" fill="var(--ovu)" stroke="var(--card)" stroke-width="2"/>'}
+  [[120,46,1,0],[60,74,.8,.9],[183,88,.7,1.7],[66,172,.7,2.3],[178,168,.9,.5]].forEach(function(q){
+    s+='<g transform="translate('+q[0]+' '+q[1]+') scale('+q[2]+')"><path class="tw" style="animation-delay:'+q[3]+'s" d="M0 -6 Q0 0 6 0 Q0 0 0 6 Q0 0 -6 0 Q0 0 0 -6Z" fill="var(--ovu)"/></g>';
+  });
+  if(cd){var m=pt((Math.min(cd,n)-0.5)/n,92);s+='<g transform="translate('+m[0].toFixed(1)+' '+m[1].toFixed(1)+')"><g class="moon"><circle r="13" fill="var(--card)" stroke="var(--ink)" stroke-width="2.5"/><path d="M3 -7 A8 8 0 1 0 3 7 A9 9 0 0 1 3 -7Z" fill="var(--ink)"/></g></g>'}
+  s+='</svg><div class="mid">';
+  if(cd) s+='<div class="lab">Cycle day</div><div class="big">'+cd+'</div><div class="phase">'+esc(phase)+'</div>';
+  else s+='<div class="lab">Typical cycle</div><div class="big">'+n+'</div><div class="phase">days</div>';
+  return '<div class="dial">'+s+'</div></div>';
+}
+var LINES={
+  "Period":["Hot water bottle season. Go gently.","Permission granted to cancel plans.","Tea, blanket, and absolutely no heroics."],
+  "Follicular phase":["Energy on the way up. Good days for big plans.","Fresh page, fresh cycle.","The clouds are parting."],
+  "Fertile window":["In full bloom, by the calendar's guess.","Peak season on the dial."],
+  "Estimated ovulation":["Top of the hill today, give or take.","The dial says full bloom."],
+  "Luteal phase":["Winding down. Snacks are a valid strategy.","Slow lane for a while, and that's fine.","Cosy mode: on."],
+  "Period due":["Any day now. Keep supplies handy.","The moon is knocking."],
+  "late":["Fashionably late.","Bodies don't read calendars."]
+};
+var QUIPS=["Mrrp.","Bhayankar by name, soft by nature.","I have reviewed your log. Acceptable.","Chin scratches improve prediction accuracy.","Feed me first. Then science.","Meow. That is my final word.","I sat on the calendar. You're welcome."];
+var catSay="", catI=-1;
+function cat(sleepy){
+  var G="#E9B27A",D="#D2935A",C="#FCEEDB",P="#EFA3A0",K="#3A2418",I="#C2B24E";
+  var eyes=sleepy
+    ?'<path d="M44 41 q5 4 10 0 M66 41 q5 4 10 0" fill="none" stroke="'+K+'" stroke-width="2" stroke-linecap="round"/><text x="94" y="18" font-family="Caveat, cursive" font-size="17" fill="'+D+'">z</text><text x="104" y="8" font-family="Caveat, cursive" font-size="12" fill="'+D+'">z</text>'
+    :'<g class="blink"><ellipse cx="49" cy="40" rx="4.6" ry="4.9" fill="'+I+'" stroke="'+K+'" stroke-width="1"/><ellipse cx="71" cy="40" rx="4.6" ry="4.9" fill="'+I+'" stroke="'+K+'" stroke-width="1"/><ellipse cx="49" cy="40" rx="1.9" ry="3.7" fill="'+K+'"/><ellipse cx="71" cy="40" rx="1.9" ry="3.7" fill="'+K+'"/><circle cx="50.4" cy="38.2" r="1" fill="#fff"/><circle cx="72.4" cy="38.2" r="1" fill="#fff"/></g>';
+  return '<svg viewBox="0 0 120 110" aria-hidden="true">'+
+    '<g class="tail"><path d="M80 97 C106 100 112 80 103 64" fill="none" stroke="'+G+'" stroke-width="8" stroke-linecap="round"/><path d="M104.6 67.5 L103 64" fill="none" stroke="'+C+'" stroke-width="8" stroke-linecap="round"/></g>'+
+    '<ellipse cx="60" cy="80" rx="26" ry="25" fill="'+G+'"/>'+
+    '<path d="M37 74 l6 1.5 M36 82 l6 0 M83 74 l-6 1.5 M84 82 l-6 0" stroke="'+D+'" stroke-width="2" stroke-linecap="round" opacity=".7"/>'+
+    '<ellipse cx="60" cy="87" rx="13" ry="16" fill="'+C+'"/>'+
+    '<polygon points="33,35 33,1 57,21" fill="'+G+'"/><polygon points="87,35 87,1 63,21" fill="'+G+'"/>'+
+    '<polygon points="38,27 37,9 51,21" fill="'+P+'"/><polygon points="82,27 83,9 69,21" fill="'+P+'"/>'+
+    '<ellipse cx="60" cy="42" rx="26" ry="22" fill="'+G+'"/>'+
+    '<path d="M60 22 v6 M53 23 l1.5 5.5 M67 23 l-1.5 5.5" stroke="'+D+'" stroke-width="2" stroke-linecap="round" opacity=".8"/>'+
+    '<ellipse cx="60" cy="51" rx="11" ry="7.5" fill="'+C+'"/>'+eyes+
+    '<path d="M57.5 46.5 h5 l-2.5 3z" fill="'+P+'" stroke="'+K+'" stroke-width=".8" stroke-linejoin="round"/>'+
+    '<path d="M60 49.5 q-3 4.5 -6.5 1.5 M60 49.5 q3 4.5 6.5 1.5" fill="none" stroke="'+K+'" stroke-width="1.5" stroke-linecap="round"/>'+
+    '<path d="M45 50 l-14 -3 M45 53 l-13 3 M75 50 l14 -3 M75 53 l13 3" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/>'+
+    '<path d="M45 50 l-14 -3 M45 53 l-13 3 M75 50 l14 -3 M75 53 l13 3" stroke="'+K+'" stroke-width=".5" stroke-linecap="round" opacity=".45"/>'+
+    '<ellipse cx="51" cy="102" rx="7.5" ry="5" fill="'+C+'"/><ellipse cx="69" cy="102" rx="7.5" ry="5" fill="'+C+'"/></svg>';
+}
+function catRow(text,sleepy){
+  return '<div class="catrow"><button class="catbtn" id="cat" type="button" aria-label="Pet Mr Idli Billu Bhayankar Sanyal">'+cat(sleepy&&!catSay)+'</button>'+
+    '<div class="bubble">'+esc(catSay||text)+'<small>Mr Idli Billu</small></div></div>';
+}
+function line(phase,late){var a=LINES[late?"late":phase]||[];return a.length?a[T%a.length]:""}
+function renderHero(A){
+  var h;
+  if(!ready){
+    h='<div class="hero">'+dial(A,0)+'<div class="facts"><p class="headline">Loading your log…</p></div></div>';
+  }else if(!A.last){
+    h='<div class="hero">'+dial(A,0)+'<form class="onb" id="onb">'+
+      '<p class="headline">Start with your last period.</p>'+
+      catRow("Hello. I'm Mr Idli Billu Bhayankar Sanyal, and I'll be supervising.",false)+
+      '<div class="fields">'+
+      '<label class="field">First day of last period<input type="date" id="onb-date" max="'+key(T)+'" value="'+key(T)+'" required></label>'+
+      '<label class="field">Period length (days)<input type="number" id="onb-period" min="1" max="12" value="'+data.settings.period+'"></label>'+
+      '<label class="field">Cycle length (days)<input type="number" id="onb-cycle" min="15" max="60" value="'+data.settings.cycle+'"></label>'+
+      '</div><div class="row"><button class="btn primary" id="onb-go" type="submit">Start tracking</button>'+
+      '<span class="hand">or tap any day in the calendar ↓</span></div></form></div>';
+  }else{
+    var cd=T-A.last.start+1, phase=phaseOf(A), diff=A.next-T, head;
+    if(cd>90) head="Your last logged period started "+fmt(A.last.start,{day:"numeric",month:"long"})+". Log a newer one to refresh the predictions.";
+    else if(diff>1) head="Next period in "+diff+" days, around "+fmt(A.next,{weekday:"long",day:"numeric",month:"long"})+".";
+    else if(diff===1) head="Next period expected tomorrow.";
+    else if(diff===0) head="Period expected today.";
+    else head="Period is "+(-diff)+(diff===-1?" day":" days")+" late.";
+    if(phase==="Period") head="Day "+cd+" of your period. Next one around "+fmt(A.next,{day:"numeric",month:"long"})+".";
+    var tf=(dayRec(T).f||0)>=2;
+    var ovShown=A.ov>=T?A.ov:A.ov+A.avg, late=T>=A.next;
+    h='<div class="hero">'+dial(A,cd,phase)+'<div class="facts"><p class="headline">'+esc(head)+'</p>'+
+      catRow(cd>90?"It's been a while. Log a period and I'll recalculate.":line(phase,diff<0&&phase!=="Period"),phase==="Period")+
+      '<div class="factrow">'+
+      '<div class="fact p"><div class="k">Next period</div><div class="v">'+fmt(A.next)+" to "+fmt(A.next+A.pavg-1)+'</div></div>'+
+      '<div class="fact f"><div class="k">'+(late?"Following fertile window":"Fertile window")+'</div><div class="v">'+fmt(ovShown-5)+" to "+fmt(ovShown+1)+'</div></div>'+
+      '<div class="fact o"><div class="k">Estimated ovulation</div><div class="v">'+fmt(ovShown)+'</div></div>'+
+      '</div><div class="row">'+
+      (tf?'<span class="small">Flow logged for today: '+FLOW[dayRec(T).f]+'.</span>':'<button class="btn primary" id="quick-start">Log period today</button>')+
+      '<span class="small">Based on '+(A.fromLog?"your last "+Math.min(6,A.lens.length)+(A.lens.length===1?" cycle":" cycles")+" (average "+A.avg+" days)":"a typical "+A.avg+"-day cycle until two periods are logged")+'.</span>'+
+      '</div></div></div>';
+  }
+  $("hero").innerHTML=h;
+}
+function renderCal(A){
+  var first=num(view.y+"-"+pad(view.m+1)+"-01"), dow=(new Date(first*DAY).getUTCDay()+6)%7, start=first-dow;
+  var dim=new Date(Date.UTC(view.y,view.m+1,0)).getUTCDate(), weeks=Math.ceil((dow+dim)/7);
+  var h='<div class="calhead"><button class="nav" id="cal-prev" aria-label="Previous month">‹</button>'+
+    '<div class="m">'+fmt(first,{month:"long",year:"numeric"})+'</div>'+
+    '<button class="nav" id="cal-next" aria-label="Next month">›</button></div><div class="grid">';
+  ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(function(d){h+='<div class="dow">'+d+'</div>'});
+  for(var i=0;i<weeks*7;i++){
+    var n=start+i, r=data.days[key(n)], f=r?r.f||0:0, c="d", lab=[fmt(n,{weekday:"long",day:"numeric",month:"long"})];
+    if(n<first||n>=first+dim) c+=" out";
+    if(f){c+=" f"+f;lab.push(FLOW[f]+" flow")}
+    else{
+      if(A.fert[n]){c+=" fert";lab.push("fertile window")}
+      if(A.pred[n]){c+=" pred";lab.push("predicted period")}
+    }
+    if(A.ovu[n]&&f<2){c+=" ovu";lab.push("estimated ovulation")}
+    if(r&&((r.s&&r.s.length)||r.n)) c+=" note";
+    var sx=r&&r.x&&r.x.length;if(sx)lab.push("sexual activity logged");
+    if(n===T){c+=" today";lab.push("today")}
+    if(n===sel) c+=" sel";
+    h+='<button class="'+c+'" id="d-'+n+'" data-n="'+n+'" aria-label="'+esc(lab.join(", "))+'"'+(n===sel?' aria-current="date"':'')+'>'+new Date(n*DAY).getUTCDate()+(sx?'<i class="sx" aria-hidden="true">♥</i>':'')+'</button>';
+  }
+  h+='</div><div class="legend"><span><i class="sw p"></i>Period</span><span><i class="sw pr"></i>Predicted period</span><span><i class="sw f"></i>Fertile window</span><span><i class="sw o"></i>Estimated ovulation</span><span><i class="sxl" aria-hidden="true">♥</i>Sexual activity</span></div>';
+  $("cal").innerHTML=h;
+}
+function renderEditor(A){
+  var r=dayRec(sel), h='<div class="editor"><div><p class="edate">'+fmt(sel,{weekday:"long",day:"numeric",month:"long"})+'</p><div class="small">';
+  var bits=[];
+  if(sel===T) bits.push("Today");
+  var cyc=null;A.cycles.forEach(function(c){if(c.start<=sel)cyc=c});
+  if(cyc&&sel-cyc.start<90) bits.push("Cycle day "+(sel-cyc.start+1));
+  if(A.pred[sel]) bits.push("Period predicted");
+  if(A.ovu[sel]) bits.push("Estimated ovulation"); else if(A.fert[sel]) bits.push("Fertile window");
+  h+=esc(bits.join(" · ")||"No cycle logged before this day")+'</div></div>';
+  if(!ready) h+='<div class="small">Loading…</div>';
+  else if(sel>T) h+='<div class="small">This day is in the future, so there is nothing to log yet.</div>';
+  else{
+    h+='<div><div class="lbl">Flow</div><div class="seg">';
+    FLOW.forEach(function(name,i){h+='<button class="chip" id="flow-'+i+'" data-flow="'+i+'" aria-pressed="'+((r.f||0)===i)+'">'+name+'</button>'});
+    h+='</div></div><div><div class="lbl">Symptoms and mood</div><div class="seg" style="gap:6px">';
+    SYMPTOMS.forEach(function(s,i){h+='<button class="chip sym" id="sym-'+i+'" data-sym="'+esc(s)+'" aria-pressed="'+(r.s.indexOf(s)>=0)+'">'+s+'</button>'});
+    h+='</div></div><div><div class="lbl">Sexual activity</div><div class="seg">';
+    SEX.forEach(function(s,i){h+='<button class="chip" id="sex-'+i+'" data-sex="'+esc(s)+'" aria-pressed="'+(r.x.indexOf(s)>=0)+'">'+s+'</button>'});
+    h+='</div></div><div><label class="lbl" for="note" style="display:block">Note</label><textarea id="note" placeholder="Medication, sleep, anything you want to remember">'+esc(r.n||"")+'</textarea></div>';
+    if(!isEmpty(r)) h+='<div><button class="btn" id="clear-day">Clear this day</button></div>';
+  }
+  $("editor").innerHTML=h+'</div>';
+}
+function renderStats(A){
+  var l=A.lens, v=function(n,u,k){return '<div class="stat"><div class="n">'+n+'</div><div class="u">'+u+'</div><div class="small">'+k+'</div></div>'};
+  $("stats").innerHTML='<h2>Your averages</h2><div class="stats">'+
+    v(A.avg,"days","Cycle length"+(A.fromLog?"":" (typical)"))+
+    v(A.pavg,"days","Period length")+
+    v(l.length?Math.min.apply(null,l)+"–"+Math.max.apply(null,l):"–","days","Shortest to longest")+
+    v(A.cycles.length,A.cycles.length===1?"period":"periods","Logged so far")+'</div>';
+}
+function renderHistory(A){
+  var h='<h2>Cycle history</h2>';
+  if(!A.cycles.length) h+='<div class="hand">Nothing here yet. Your first logged period starts the story.</div>';
+  else{
+    h+='<div class="hist">';
+    A.cycles.slice(-12).reverse().forEach(function(c){
+      var cur=c.len===null, len=cur?Math.max(1,T-c.start+1):c.len, w=Math.min(100,len/45*100), pw=Math.min(100,c.plen/45*100);
+      h+='<div class="h"><div>'+fmt(c.start,{day:"numeric",month:"short",year:"2-digit"})+'</div>'+
+        '<div class="bar"><i style="width:'+w.toFixed(1)+'%"></i><b style="width:'+pw.toFixed(1)+'%"></b></div>'+
+        '<div class="r">'+(cur?"day "+len:len+" days")+'</div></div>';
+    });
+    h+='</div><div class="small" style="margin-top:10px">Red is the period, grey the rest of the cycle. The top row is the cycle in progress.</div>';
+  }
+  $("history").innerHTML=h;
+}
+function renderSettings(){
+  $("settings-inner").innerHTML=
+    '<div class="fields">'+
+    '<label class="field">Typical cycle length (days)<input type="number" id="set-cycle" min="15" max="60" value="'+data.settings.cycle+'"></label>'+
+    '<label class="field">Typical period length (days)<input type="number" id="set-period" min="1" max="12" value="'+data.settings.period+'"></label>'+
+    '</div><div class="small">These are used only until your own logged cycles give an average.</div>'+
+    '<label class="row" style="gap:8px;font-size:14px"><input type="checkbox" id="set-sound"'+(data.sound===false?'':' checked')+'>Meow when Mr Idli Billu is petted</label>'+
+    '<div class="row"><button class="btn" id="dl-backup">Download backup</button><label class="btn" for="restore-file" id="restore-lbl" tabindex="0">Restore from backup</label><input type="file" id="restore-file" accept="application/json,.json" hidden><button class="btn" id="dl-csv">Download CSV</button>'+
+    (confirmDelete?'<button class="btn danger" id="delete-yes">Yes, delete everything</button><button class="btn" id="delete-no">Keep my log</button>':'<button class="btn danger" id="delete-all">Delete all entries</button>')+
+    '<span class="small" id="csv-msg"></span></div><div class="small">'+(standalone?"Installed on this device. ":"To install: on iPhone open this page in Safari, tap Share, then Add to Home Screen. On Android open it in Chrome, tap the menu, then Install app or Add to Home screen. ")+'Entries are stored only on this device, so download a backup now and then.</div>';
+}
+function render(){
+  var act=document.activeElement&&document.activeElement.id;
+  var A=analyse();
+  renderHero(A);renderCal(A);renderEditor(A);renderStats(A);renderHistory(A);renderSettings();
+  if(act&&act!=="note"){var el=$(act);if(el)el.focus()}
+  if(popId){var pe=$(popId);if(pe)pe.classList.add("pop");popId=null}
+}
+var standalone=(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true;
+function download(name,text,type){
+  var url=URL.createObjectURL(new Blob([text],{type:type})), a=document.createElement("a");
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(url)},2000);
+}
+function restore(file){
+  var fr=new FileReader();
+  fr.onload=function(){
+    var msg=$("csv-msg");
+    try{
+      var o=JSON.parse(fr.result);
+      if(!o||typeof o.days!=="object"||o.days===null||Array.isArray(o.days)) throw 0;
+      var n=Object.keys(o.days).length;
+      if(!window.confirm("Replace everything on this device with the backup ("+n+" logged days)?")) return;
+      data.days={};adopt(o);queueSave();render();
+      $("csv-msg").textContent="Backup restored.";
+    }catch(e){if(msg)msg.textContent="That file isn't a Cycle Tracker backup."}
+  };
+  fr.readAsText(file);
+}
+function csv(){
+  var rows=["date,flow,symptoms,sexual_activity,note"];
+  Object.keys(data.days).sort().forEach(function(k){
+    var r=data.days[k];
+    rows.push([k,FLOW[r.f||0],'"'+(r.s||[]).join("; ")+'"','"'+(r.x||[]).join("; ")+'"','"'+String(r.n||"").replace(/"/g,'""')+'"'].join(","));
+  });
+  return rows.join("\n");
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click",function(e){
+  var t=e.target.closest("button");if(!t) return;
+  if(t.dataset.n||t.classList.contains("chip")) popId=t.id;
+  if(t.dataset.n){sel=+t.dataset.n;var d=new Date(sel*DAY);view={y:d.getUTCFullYear(),m:d.getUTCMonth()};render();return}
+  if(t.id==="cal-prev"||t.id==="cal-next"){var m=view.m+(t.id==="cal-next"?1:-1);view={y:view.y+Math.floor(m/12),m:(m%12+12)%12};render();return}
+  if(t.id==="cat"){purr();catI=(catI+1)%QUIPS.length;catSay=QUIPS[catI];burst(t,"♥","#E39A55");popId="cat";render();return}
+  if(!ready) return;
+  var on=t.getAttribute("aria-pressed")==="false";
+  if(t.dataset.flow!==undefined){if(on&&+t.dataset.flow>0)burst(t,"●","var(--period)");setFlow(sel,+t.dataset.flow);render();return}
+  if(t.dataset.sym){if(on)burst(t,"✦","var(--ovu)");toggle(sel,"s",t.dataset.sym);render();return}
+  if(t.dataset.sex){if(on)burst(t,"♥","var(--heart)");toggle(sel,"x",t.dataset.sex);render();return}
+  if(t.id==="clear-day"){putDay(sel,{f:0,s:[],x:[],n:""});render();return}
+  if(t.id==="quick-start"){burst(t,"●","var(--period)");sel=T;view={y:new Date(T*DAY).getUTCFullYear(),m:new Date(T*DAY).getUTCMonth()};setFlow(T,3);render();return}
+  if(t.id==="delete-all"){confirmDelete=true;render();return}
+  if(t.id==="delete-no"){confirmDelete=false;render();return}
+  if(t.id==="delete-yes"){confirmDelete=false;data.days={};queueSave();render();return}
+  if(t.id==="dl-backup"){download("cycle-tracker-backup-"+key(T)+".json",JSON.stringify({app:"cycle-tracker",tag:"anandamide.ks",exported:key(T),days:data.days,settings:data.settings,sound:data.sound},null,1),"application/json");$("csv-msg").textContent="Backup downloaded.";return}
+  if(t.id==="dl-csv"){download("cycle-tracker-"+key(T)+".csv",csv(),"text/csv");$("csv-msg").textContent="CSV downloaded.";return}
+});
+document.addEventListener("submit",function(e){
+  e.preventDefault();
+  if(e.target.id!=="onb"||!ready) return;
+  var v=$("onb-date").value;if(!v) return;
+  var s=Math.min(num(v),T);
+  data.settings={cycle:clampInt($("onb-cycle").value,15,60,28),period:clampInt($("onb-period").value,1,12,5)};
+  for(var d=s;d<s+data.settings.period&&d<=T;d++){var r=dayRec(d);r.f=3;data.days[key(d)]=r}
+  queueSave();render();
+});
+document.addEventListener("input",function(e){
+  if(!ready) return;
+  if(e.target.id==="note"){
+    var r=dayRec(sel);r.n=e.target.value;putDay(sel,r);
+  }
+});
+document.addEventListener("change",function(e){
+  if(!ready) return;
+  if(e.target.id==="restore-file"){if(e.target.files&&e.target.files[0])restore(e.target.files[0]);e.target.value="";return}
+  if(e.target.id==="note"){render();return}
+  if(e.target.id==="set-sound"){data.sound=e.target.checked;queueSave();return}
+  if(e.target.id==="set-cycle"||e.target.id==="set-period"){
+    data.settings={cycle:clampInt($("set-cycle").value,15,60,28),period:clampInt($("set-period").value,1,12,5)};
+    queueSave();render();
+  }
+});
+window.addEventListener("pagehide",function(){if(dirty){clearTimeout(timer);flush()}});
+boot();
+})();
+</script>
+</body>
+</html>
