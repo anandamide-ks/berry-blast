@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Private cycle tracker. Your entries stay on this device. anandamide.ks">
+<meta name="description" content="Berry Blast, a private cycle tracker. Your entries stay on this device. anandamide.ks">
 <meta name="theme-color" content="#F4F1F7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1A121F" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Cycle Tracker">
+<meta name="apple-mobile-web-app-title" content="Berry Blast">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="author" content="anandamide.ks">
-<title>Cycle Tracker</title>
+<title>Berry Blast</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Libre+Franklin:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=UnifrakturCook:wght@700&display=swap" rel="stylesheet">
@@ -192,7 +192,7 @@ footer p{margin:0;max-width:65ch}
 <body>
 <div class="wrap">
   <header>
-    <div class="mark"><svg viewBox="-12 -12 24 24" aria-hidden="true"><path d="M3 -9 A10 10 0 1 0 3 9 A11.5 11.5 0 0 1 3 -9Z" fill="var(--ovu)"/></svg>Cycle Tracker</div>
+    <div class="mark"><svg viewBox="-12 -12 24 24" aria-hidden="true"><path d="M3 -9 A10 10 0 1 0 3 9 A11.5 11.5 0 0 1 3 -9Z" fill="var(--ovu)"/></svg>Berry Blast</div>
     <div class="status" id="status" role="status">Loading your log…</div>
   </header>
   <section class="card" id="hero"></section>
@@ -574,7 +574,7 @@ function restore(file){
       if(!window.confirm("Replace everything on this device with the backup ("+n+" logged days)?")) return;
       data.days={};adopt(o);queueSave();render();
       $("csv-msg").textContent="Backup restored.";
-    }catch(e){if(msg)msg.textContent="That file isn't a Cycle Tracker backup."}
+    }catch(e){if(msg)msg.textContent="That file isn't a Berry Blast backup."}
   };
   fr.readAsText(file);
 }
@@ -604,8 +604,8 @@ document.addEventListener("click",function(e){
   if(t.id==="delete-all"){confirmDelete=true;render();return}
   if(t.id==="delete-no"){confirmDelete=false;render();return}
   if(t.id==="delete-yes"){confirmDelete=false;data.days={};queueSave();render();return}
-  if(t.id==="dl-backup"){download("cycle-tracker-backup-"+key(T)+".json",JSON.stringify({app:"cycle-tracker",tag:"anandamide.ks",exported:key(T),days:data.days,settings:data.settings,sound:data.sound},null,1),"application/json");$("csv-msg").textContent="Backup downloaded.";return}
-  if(t.id==="dl-csv"){download("cycle-tracker-"+key(T)+".csv",csv(),"text/csv");$("csv-msg").textContent="CSV downloaded.";return}
+  if(t.id==="dl-backup"){download("berry-blast-backup-"+key(T)+".json",JSON.stringify({app:"berry-blast",tag:"anandamide.ks",exported:key(T),days:data.days,settings:data.settings,sound:data.sound},null,1),"application/json");$("csv-msg").textContent="Backup downloaded.";return}
+  if(t.id==="dl-csv"){download("berry-blast-"+key(T)+".csv",csv(),"text/csv");$("csv-msg").textContent="CSV downloaded.";return}
 });
 document.addEventListener("submit",function(e){
   e.preventDefault();

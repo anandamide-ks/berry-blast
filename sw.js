@@ -1,7 +1,7 @@
-/* Cycle Tracker offline cache. anandamide.ks
+/* Berry Blast offline cache. anandamide.ks
    Bump VERSION whenever index.html changes so installed copies update. */
-const VERSION = "cycle-tracker-v1";
-const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
+const VERSION = "berry-blast-v3";
+const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

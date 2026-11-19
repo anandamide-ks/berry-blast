@@ -1,8 +1,8 @@
-# Cycle Tracker (installable web app)
+# Berry Blast (installable web app)
 
 anandamide.ks
 
-A private cycle tracker that installs to a phone's home screen and works offline.
+Berry Blast is a private cycle tracker that installs to a phone's home screen and works offline.
 All entries are stored on the device, in the browser's storage for this site. Nothing is sent anywhere.
 
 ## Files
@@ -10,16 +10,16 @@ All entries are stored on the device, in the browser's storage for this site. No
 - `index.html` – the whole app
 - `manifest.webmanifest` – name, icons and colours for the installed app
 - `sw.js` – offline cache
-- `icons/` – app icons
+- `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` – app icons
 
 ## Put it online (GitHub Pages, free)
 
 The app must be served over HTTPS for installing and offline use to work; opening `index.html` straight from a folder is not enough.
 
-1. Create a GitHub account if you don't have one, then create a new **public** repository, for example `cycle-tracker`.
-2. Upload everything in this folder to the repository, keeping the `icons` folder as a folder.
+1. Create a GitHub account if you don't have one, then create a new **public** repository, for example `berry-blast`.
+2. Upload every file in this folder to the top level of the repository.
 3. In the repository, open **Settings → Pages**, set the source to **Deploy from a branch**, pick the `main` branch and the `/ (root)` folder, and save.
-4. After a minute or two the app is live at `https://<your-username>.github.io/cycle-tracker/`.
+4. After a minute or two the app is live at `https://<your-username>.github.io/berry-blast/`.
 
 The repository holds only the app's code. Nobody's entries are ever in it.
 
@@ -40,4 +40,4 @@ Uninstalling the app or clearing the browser's site data erases the log, so keep
 
 ## Updating the app
 
-When you change `index.html`, also change `VERSION` at the top of `sw.js` (for example to `cycle-tracker-v2`), so installed copies pick up the new version.
+When you change `index.html`, also change `VERSION` at the top of `sw.js` (for example to `berry-blast-v4`), so installed copies pick up the new version.
