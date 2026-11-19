@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="Berry Blast">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest">
+<script src="config.js"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="author" content="anandamide.ks">
@@ -164,6 +165,34 @@ details .inner{display:flex;flex-direction:column;gap:14px;margin-top:14px}
 label.btn{cursor:pointer;display:inline-block}
 footer{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 footer p{margin:0;max-width:65ch}
+/* partner sharing */
+[hidden]{display:none!important}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:8px 16px;font-weight:600;font-size:14px}
+.tab:hover{border-color:var(--ink)}
+.tab[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+#pview{display:none;flex-direction:column;gap:20px}
+.wrap.viewing #pview{display:flex}
+.wrap.viewing #hero,.wrap.viewing .two.mine,.wrap.viewing #stats,.wrap.viewing #history,.wrap.viewing #settings-card{display:none}
+.pcard{display:flex;flex-direction:column;gap:14px}
+.psec{border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:12px}
+.psec .lbl{font-size:15px;margin:0}
+.tog{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600}
+.tog input,.catopt input{width:18px;height:18px;accent-color:var(--period);flex:none}
+.catopts{display:grid;gap:8px}
+.catopt{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.catopt span{display:flex;flex-direction:column}
+.catopt small{color:var(--muted);font-size:12px}
+.code{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:28px;font-weight:700;letter-spacing:.14em;color:var(--ink)}
+.prow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px dashed var(--line)}
+.prow:last-child{border-bottom:0}
+.prow .who{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere}
+.linkbtn{background:none;border:0;padding:0;color:var(--period);font-weight:600;text-decoration:underline;text-underline-offset:2px;font-size:inherit}
+.field input[type=email],.field input[type=password],.field input[type=text]{width:240px;max-width:100%}
+.pmsg{font-size:14px;min-height:1.2em}
+.pmsg.err{color:var(--period);font-weight:600}
+.pchips{display:flex;flex-wrap:wrap;gap:6px}
+.pchips span{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 11px;font-size:13px}
 @media (max-width:760px){
   .hero{grid-template-columns:1fr;gap:16px}
   .two{grid-template-columns:1fr}
@@ -195,14 +224,17 @@ footer p{margin:0;max-width:65ch}
     <div class="mark"><svg viewBox="-12 -12 24 24" aria-hidden="true"><path d="M3 -9 A10 10 0 1 0 3 9 A11.5 11.5 0 0 1 3 -9Z" fill="var(--ovu)"/></svg>Berry Blast</div>
     <div class="status" id="status" role="status">Loading your log…</div>
   </header>
+  <nav class="tabs" id="tabs" aria-label="Whose cycle" hidden></nav>
+  <div id="pview"></div>
   <section class="card" id="hero"></section>
-  <div class="two">
+  <div class="two mine">
     <section class="card" id="cal"></section>
     <section class="card" id="editor"></section>
   </div>
   <section class="card" id="stats"></section>
   <section class="card" id="history"></section>
-  <section class="card">
+  <section class="card pcard" id="partner" hidden></section>
+  <section class="card" id="settings-card">
     <details id="settings">
       <summary id="settings-sum">Settings and data</summary>
       <div class="inner" id="settings-inner"></div>
@@ -220,7 +252,8 @@ var DAY=864e5, LS="cycle-tracker-v1";
 var FLOW=["None","Spotting","Light","Medium","Heavy"];
 var SEX=["Protected","Unprotected","Withdrawal","Solo","Emergency contraceptive"];
 var SYMPTOMS=["Cramps","Headache","Bloating","Breast tenderness","Back pain","Acne","Fatigue","Nausea","Cravings","Poor sleep","Low mood","Irritable","Anxious"];
-var data={days:{},settings:{cycle:28,period:5},sound:true};
+var data={days:{},settings:{cycle:28,period:5},sound:true,share:defaultShare()};
+function defaultShare(){return {on:false,name:"",cats:{pred:true,period:true,sym:true,sex:false}}}
 var popId=null, ready=false, store=null, saving=false, dirty=false, timer=null, confirmDelete=false;
 
 function pad(x){return (x<10?"0":"")+x}
@@ -334,7 +367,7 @@ function burst(el,glyph,color){
     document.body.appendChild(p);
   }
 }
-function queueSave(){dirty=true;setStatus("Saving…");clearTimeout(timer);timer=setTimeout(flush,600)}
+function queueSave(){dirty=true;setStatus("Saving…");clearTimeout(timer);timer=setTimeout(flush,600);queuePush()}
 async function flush(){
   if(saving) return; saving=true;
   while(dirty){
@@ -356,6 +389,11 @@ function adopt(o){
   if(o.days&&typeof o.days==="object") data.days=o.days;
   data.sound=o.sound!==false;
   if(o.settings) data.settings={cycle:clampInt(o.settings.cycle,15,60,28),period:clampInt(o.settings.period,1,12,5)};
+  if(o.share&&typeof o.share==="object"){
+    var sh=defaultShare();sh.on=o.share.on===true;sh.name=String(o.share.name||"").slice(0,40);
+    if(o.share.cats) ["pred","period","sym","sex"].forEach(function(k){if(typeof o.share.cats[k]==="boolean")sh.cats[k]=o.share.cats[k]});
+    data.share=sh;
+  }
 }
 async function boot(){
   try{adopt(JSON.parse(localStorage.getItem(LS)||"null"))}catch(e){}
@@ -364,6 +402,7 @@ async function boot(){
   render();
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
   if("serviceWorker" in navigator&&location.protocol!=="file:"){navigator.serviceWorker.register("sw.js").catch(function(){})}
+  initPartner();
 }
 
 /* ---------- edits ---------- */
@@ -586,6 +625,425 @@ function csv(){
   });
   return rows.join("\n");
 }
+
+/* ---------- partner sharing ---------- */
+var CFG=window.BERRY_BLAST_CONFIG||{};
+var P={state:"off",sb:null,session:null,mine:[],withMe:[],view:null,invite:null,msg:"",err:false,
+  pushTimer:null,pushedAt:0,pushErr:false,chan:null,rt:null,recovery:false,sel:null,vy:0,vm:0,busy:false};
+var CODE_ABC="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function cfgOK(){return !!(CFG.supabaseUrl&&CFG.supabaseKey)}
+function uid(){return P.session&&P.session.user?P.session.user.id:null}
+function uemail(){return P.session&&P.session.user?P.session.user.email||"":""}
+function siteUrl(){return location.origin+location.pathname}
+function note(t,isErr){P.msg=t||"";P.err=!!isErr;var m=$("p-msg");if(m){m.textContent=P.msg;m.className="pmsg"+(P.err?" err":"")}}
+function relTime(iso){
+  var t=Date.parse(iso);if(!t) return "";
+  var m=Math.round((Date.now()-t)/60000);
+  if(m<1) return "just now"; if(m<60) return m+" min ago";
+  var h=Math.round(m/60); if(h<24) return h+(h===1?" hour ago":" hours ago");
+  return new Date(t).toLocaleDateString("en-IN",{day:"numeric",month:"short"});
+}
+function friendly(e){
+  var m=(e&&(e.message||e.error_description))||"";
+  if(/invalid login credentials/i.test(m)) return "Wrong email or password.";
+  if(/email not confirmed/i.test(m)) return "Confirm your email first: open the link we sent you, then sign in here.";
+  if(/password should be at least/i.test(m)) return "Use a password of at least 6 characters.";
+  if(/rate limit|too many/i.test(m)) return "Too many attempts. Wait a few minutes and try again.";
+  if(/failed to fetch|network/i.test(m)) return "Couldn't reach the sharing service. Check your internet connection.";
+  return m||"Something went wrong. Try again.";
+}
+function loadLib(){
+  return new Promise(function(res,rej){
+    if(window.supabase&&window.supabase.createClient) return res();
+    var s=document.createElement("script");s.src="supabase.js";s.onload=function(){res()};s.onerror=function(){rej(new Error("lib"))};
+    document.head.appendChild(s);
+  });
+}
+async function initPartner(){
+  if(!cfgOK()){P.state="off";renderPartner();return}
+  P.state="loading";renderPartner();
+  try{await loadLib()}catch(e){P.state="offline";renderPartner();return}
+  try{
+    P.sb=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"berry-blast-auth"}});
+  }catch(e){P.state="offline";renderPartner();return}
+  P.state="ready";
+  P.sb.auth.onAuthStateChange(function(ev,session){
+    if(ev==="PASSWORD_RECOVERY") P.recovery=true;
+    var was=uid();P.session=session;
+    if(uid()!==was) onAuthChanged(); else setTimeout(renderPartner,0);
+  });
+  try{var r=await P.sb.auth.getSession();P.session=r.data.session}catch(e){}
+  onAuthChanged();
+}
+var authSeq=0;
+function onAuthChanged(){
+  var my=++authSeq;
+  setTimeout(async function(){
+    if(my!==authSeq) return;
+    if(P.chan){try{P.sb.removeChannel(P.chan)}catch(e){}P.chan=null}
+    P.mine=[];P.withMe=[];P.invite=null;
+    if(!uid()){P.view=null;applyView();renderPartner();return}
+    renderPartner();
+    await refreshPartners();
+    if(data.share.on) pushShare();
+    subscribe();
+  },0);
+}
+function subscribe(){
+  try{
+    var again=function(){clearTimeout(P.rt);P.rt=setTimeout(refreshPartners,500)};
+    P.chan=P.sb.channel("berry-blast-"+uid())
+      .on("postgres_changes",{event:"*",schema:"public",table:"shares"},again)
+      .on("postgres_changes",{event:"*",schema:"public",table:"partners"},again)
+      .subscribe();
+  }catch(e){}
+}
+async function refreshPartners(){
+  if(!P.sb||!uid()) return;
+  try{
+    var a=await P.sb.from("partners").select("owner_id,partner_id,partner_email,created_at");
+    if(a.error) throw a.error;
+    var me=uid(),rows=a.data||[];
+    P.mine=rows.filter(function(r){return r.owner_id===me}).map(function(r){return {id:r.partner_id,email:r.partner_email||"Partner"}});
+    var owners=rows.filter(function(r){return r.partner_id===me}).map(function(r){return r.owner_id});
+    var shares=[];
+    if(owners.length){
+      var b=await P.sb.from("shares").select("owner_id,display_name,payload,updated_at").in("owner_id",owners);
+      if(b.error) throw b.error;shares=b.data||[];
+    }
+    P.withMe=owners.map(function(id){
+      var s=shares.filter(function(x){return x.owner_id===id})[0]||null;
+      if(s) s={owner_id:s.owner_id,display_name:String(s.display_name||"").slice(0,40),updated_at:s.updated_at,payload:cleanPayload(s.payload)};
+      return {id:id,name:(s&&s.display_name)||"Your partner",share:s};
+    });
+    if(P.view&&!P.withMe.some(function(x){return x.id===P.view})) P.view=null;
+  }catch(e){note(friendly(e),true)}
+  applyView();renderPartner();
+}
+
+/* a partner's payload is someone else's data: accept only well-formed values */
+function cleanPayload(p){
+  var o={cats:{},days:{},summary:null},isDate=/^\d{4}-\d{2}-\d{2}$/;
+  if(!p||typeof p!=="object") return o;
+  if(p.cats&&typeof p.cats==="object") ["pred","period","sym","sex"].forEach(function(k){o.cats[k]=p.cats[k]===true});
+  var sm=p.summary;
+  if(sm&&isDate.test(sm.lastStart)&&isDate.test(sm.lastEnd)) o.summary={lastStart:sm.lastStart,lastEnd:sm.lastEnd,avg:clampInt(sm.avg,15,60,28),pavg:clampInt(sm.pavg,1,12,5)};
+  if(p.days&&typeof p.days==="object") Object.keys(p.days).forEach(function(k){
+    var r=p.days[k];if(!isDate.test(k)||!r||typeof r!=="object") return;
+    var d={},f=clampInt(r.f,0,4,0);if(f) d.f=f;
+    if(Array.isArray(r.s)) d.s=r.s.slice(0,30).map(function(x){return String(x).slice(0,40)});
+    if(Array.isArray(r.x)) d.x=r.x.slice(0,10).map(function(x){return String(x).slice(0,40)});
+    if(r.n) d.n=String(r.n).slice(0,2000);
+    o.days[k]=d;
+  });
+  return o;
+}
+/* what leaves the phone: only the ticked categories */
+function buildPayload(){
+  var c=data.share.cats,A=analyse(),p={v:1,cats:{pred:!!c.pred,period:!!c.period,sym:!!c.sym,sex:!!c.sex},today:key(T)};
+  if(c.pred&&A.last) p.summary={lastStart:key(A.last.start),lastEnd:key(A.last.end),avg:A.avg,pavg:A.pavg};
+  if(c.period||c.sym||c.sex){
+    p.days={};
+    Object.keys(data.days).forEach(function(k){
+      if(num(k)<T-400) return;
+      var r=data.days[k],o={};
+      if(c.period&&r.f) o.f=r.f;
+      if(c.sym){if(r.s&&r.s.length)o.s=r.s.slice();if(r.n)o.n=r.n}
+      if(c.sex&&r.x&&r.x.length) o.x=r.x.slice();
+      if(Object.keys(o).length) p.days[k]=o;
+    });
+  }
+  return p;
+}
+function queuePush(){
+  if(!P.sb||!uid()||!data.share.on) return;
+  clearTimeout(P.pushTimer);P.pushTimer=setTimeout(pushShare,1500);
+}
+async function pushShare(){
+  if(!P.sb||!uid()) return;
+  clearTimeout(P.pushTimer);
+  try{
+    if(!data.share.on){
+      var d=await P.sb.from("shares").delete().eq("owner_id",uid());if(d.error) throw d.error;
+    }else{
+      var r=await P.sb.from("shares").upsert({owner_id:uid(),display_name:data.share.name||"",payload:buildPayload(),updated_at:new Date().toISOString()});
+      if(r.error) throw r.error;
+      P.pushedAt=Date.now();
+    }
+    P.pushErr=false;
+  }catch(e){P.pushErr=true}
+  var st=$("p-sync");if(st) st.innerHTML=syncText();
+}
+function syncText(){
+  if(!data.share.on) return "";
+  if(P.pushErr) return '<span class="err">Couldn\'t update your partners. It will retry on your next change.</span>';
+  if(P.pushedAt) return "Your partners see your latest log.";
+  return "Updating…";
+}
+function newCode(){
+  var a=new Uint32Array(8),s="";crypto.getRandomValues(a);
+  for(var i=0;i<8;i++) s+=CODE_ABC[a[i]%CODE_ABC.length];
+  return s;
+}
+async function makeInvite(){
+  note("");
+  try{
+    var del=await P.sb.from("invites").delete().eq("owner_id",uid());if(del.error) throw del.error;
+    for(var tries=0;tries<2;tries++){
+      var code=newCode(),r=await P.sb.from("invites").insert({code:code,owner_id:uid()});
+      if(!r.error){P.invite={code:code,made:Date.now()};renderPartner();return}
+      if(tries===1) throw r.error;
+    }
+  }catch(e){note(friendly(e),true)}
+}
+async function joinCode(raw){
+  var code=String(raw||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  if(code.length!==8){note("Invite codes have 8 letters and numbers.",true);return}
+  note("Joining…");
+  try{
+    var r=await P.sb.rpc("redeem_invite",{invite_code:code});
+    if(r.error) throw r.error;
+    var inp=$("p-code");if(inp) inp.value="";
+    await refreshPartners();
+    P.view=r.data;P.sel=null;var d=new Date(T*DAY);P.vy=d.getUTCFullYear();P.vm=d.getUTCMonth();
+    applyView();note("You're connected.");
+  }catch(e){note(friendly(e),true)}
+}
+
+/* ---------- partner view (read-only) ---------- */
+function derive(sm,days){
+  var ls=num(sm.lastStart),le=num(sm.lastEnd),avg=sm.avg,pavg=sm.pavg,next=ls+avg,ov=next-14;
+  var D={avg:avg,pavg:pavg,ls:ls,next:next,ov:ov,cd:T-ls+1,pred:{},fert:{},ovu:{}};
+  for(var k=0;k<6;k++){
+    var s=ls+k*avg,o=s+avg-14;D.ovu[o]=1;
+    for(var d=o-5;d<=o+1;d++) D.fert[d]=1;
+    if(k>0) for(d=s;d<s+pavg;d++) if(d>=T) D.pred[d]=1;
+  }
+  var f=(days[key(T)]||{}).f||0;
+  D.late=T>=next;
+  D.phase=(f>=2||T<=le)?"Period":T>=next?"Period due":T===ov?"Estimated ovulation":(T>=ov-5&&T<=ov+1)?"Fertile window":T<ov-5?"Follicular phase":"Luteal phase";
+  D.ovShown=ov>=T?ov:ov+avg;
+  return D;
+}
+function renderPview(){
+  var el=$("pview"),w=P.withMe.filter(function(x){return x.id===P.view})[0];
+  if(!w){el.innerHTML="";return}
+  var name=esc(w.name),s=w.share;
+  if(!s){el.innerHTML='<section class="card"><p class="headline">'+name+' isn\'t sharing right now.</p><div class="small">Their cycle appears here as soon as they turn sharing back on.</div></section>';return}
+  var p=s.payload||{},c=p.cats||{},days=p.days||{},D=p.summary?derive(p.summary,days):null,h='';
+  h+='<section class="card"><div class="hero">';
+  if(D){
+    var cd=D.cd<=90?D.cd:0,head;
+    if(!cd) head=name+"'s last logged period started "+fmt(D.ls,{day:"numeric",month:"long"})+".";
+    else if(D.phase==="Period") head=name+" is on day "+cd+" of their period.";
+    else if(D.next-T>1) head=name+"'s next period is due in "+(D.next-T)+" days, around "+fmt(D.next,{weekday:"long",day:"numeric",month:"long"})+".";
+    else if(D.next-T===1) head=name+"'s period is expected tomorrow.";
+    else if(D.next===T) head=name+"'s period is expected today.";
+    else head=name+"'s period is "+(T-D.next)+(T-D.next===1?" day":" days")+" late.";
+    h+=dial({avg:D.avg,pavg:D.pavg},cd,D.phase)+'<div class="facts"><p class="headline">'+head+'</p>'+
+      '<div class="catrow"><div class="catbtn" aria-hidden="true">'+cat(D.phase==="Period")+'</div><div class="bubble">'+esc(line(D.phase,D.late&&D.phase!=="Period"))+'<small>Mr Idli Billu</small></div></div>'+
+      '<div class="factrow">'+
+      '<div class="fact p"><div class="k">Next period</div><div class="v">'+fmt(D.next)+" to "+fmt(D.next+D.pavg-1)+'</div></div>'+
+      '<div class="fact f"><div class="k">Fertile window</div><div class="v">'+fmt(D.ovShown-5)+" to "+fmt(D.ovShown+1)+'</div></div>'+
+      '<div class="fact o"><div class="k">Estimated ovulation</div><div class="v">'+fmt(D.ovShown)+'</div></div></div>';
+  }else{
+    h+='<div class="facts" style="grid-column:1/-1"><p class="headline">'+name+"'s cycle</p><div class=\"small\">"+
+      (c.pred?"Not enough logged yet for predictions.":name+" isn't sharing predictions.")+'</div>';
+  }
+  h+='<div class="small">Read-only view · updated '+esc(relTime(s.updated_at))+'</div></div></div></section>';
+  // calendar + day detail
+  var first=num(P.vy+"-"+pad(P.vm+1)+"-01"),dow=(new Date(first*DAY).getUTCDay()+6)%7,start=first-dow;
+  var dim=new Date(Date.UTC(P.vy,P.vm+1,0)).getUTCDate(),weeks=Math.ceil((dow+dim)/7);
+  h+='<div class="two"><section class="card"><div class="calhead"><button class="nav" id="pcal-prev" aria-label="Previous month">‹</button>'+
+    '<div class="m">'+fmt(first,{month:"long",year:"numeric"})+'</div><button class="nav" id="pcal-next" aria-label="Next month">›</button></div><div class="grid">';
+  ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(function(d){h+='<div class="dow">'+d+'</div>'});
+  for(var i=0;i<weeks*7;i++){
+    var n=start+i,r=days[key(n)]||{},f=r.f||0,cl="d",lab=[fmt(n,{weekday:"long",day:"numeric",month:"long"})];
+    if(n<first||n>=first+dim) cl+=" out";
+    if(f){cl+=" f"+f;lab.push(FLOW[f]+" flow")}
+    else if(D){if(D.fert[n]){cl+=" fert";lab.push("fertile window")}if(D.pred[n]){cl+=" pred";lab.push("predicted period")}}
+    if(D&&D.ovu[n]&&f<2){cl+=" ovu";lab.push("estimated ovulation")}
+    if((r.s&&r.s.length)||r.n) cl+=" note";
+    var sx=r.x&&r.x.length;if(sx) lab.push("sexual activity logged");
+    if(n===T){cl+=" today";lab.push("today")}
+    if(n===P.sel) cl+=" sel";
+    h+='<button class="'+cl+'" id="pd-'+n+'" data-pn="'+n+'" aria-label="'+esc(lab.join(", "))+'">'+new Date(n*DAY).getUTCDate()+(sx?'<i class="sx" aria-hidden="true">♥</i>':'')+'</button>';
+  }
+  h+='</div><div class="legend">'+(c.period?'<span><i class="sw p"></i>Period</span>':'')+(D?'<span><i class="sw pr"></i>Predicted period</span><span><i class="sw f"></i>Fertile window</span><span><i class="sw o"></i>Estimated ovulation</span>':'')+(c.sex?'<span><i class="sxl" aria-hidden="true">♥</i>Sexual activity</span>':'')+'</div></section>';
+  var sel=P.sel==null?T:P.sel,rd=days[key(sel)]||{},det='';
+  if(c.period) det+='<div><div class="lbl">Flow</div><div class="small">'+(rd.f?FLOW[rd.f]:"None logged")+'</div></div>';
+  if(c.sym){
+    det+='<div><div class="lbl">Symptoms and mood</div>'+(rd.s&&rd.s.length?'<div class="pchips">'+rd.s.map(function(x){return '<span>'+esc(x)+'</span>'}).join("")+'</div>':'<div class="small">None logged</div>')+'</div>';
+    if(rd.n) det+='<div><div class="lbl">Note</div><div class="small" style="white-space:pre-wrap">'+esc(rd.n)+'</div></div>';
+  }
+  if(c.sex) det+='<div><div class="lbl">Sexual activity</div>'+(rd.x&&rd.x.length?'<div class="pchips">'+rd.x.map(function(x){return '<span>'+esc(x)+'</span>'}).join("")+'</div>':'<div class="small">None logged</div>')+'</div>';
+  if(!det) det='<div class="small">'+name+' shares predictions only, so there are no day details.</div>';
+  var bits=[];if(sel===T)bits.push("Today");if(D&&sel>=D.ls&&sel-D.ls<90)bits.push("Cycle day "+(sel-D.ls+1));
+  if(D&&D.pred[sel])bits.push("Period predicted");if(D&&D.ovu[sel])bits.push("Estimated ovulation");else if(D&&D.fert[sel])bits.push("Fertile window");
+  h+='<section class="card"><div class="editor"><div><p class="edate">'+fmt(sel,{weekday:"long",day:"numeric",month:"long"})+'</p><div class="small">'+esc(bits.join(" · "))+'</div></div>'+det+'</div></section></div>';
+  el.innerHTML=h;
+}
+function renderTabs(){
+  var t=$("tabs");
+  if(!uid()||!P.withMe.length){t.hidden=true;t.innerHTML="";return}
+  var h='<button class="tab" id="tab-me" data-tab="" aria-pressed="'+(!P.view)+'">My cycle</button>';
+  P.withMe.forEach(function(w,i){h+='<button class="tab" id="tab-'+i+'" data-tab="'+esc(w.id)+'" aria-pressed="'+(P.view===w.id)+'">'+esc(w.name)+'</button>'});
+  t.innerHTML=h;t.hidden=false;
+}
+function applyView(){
+  document.querySelector(".wrap").classList.toggle("viewing",!!P.view);
+  renderTabs();renderPview();
+}
+
+/* ---------- partner settings card ---------- */
+var KEEP=["p-email","p-pass","p-code","p-name","p-newpass"];
+function renderPartner(){
+  var el=$("partner");
+  if(P.state==="off"){el.hidden=true;el.innerHTML="";return}
+  el.hidden=false;
+  var keep={},act=document.activeElement&&document.activeElement.id;
+  KEEP.forEach(function(id){var i=$(id);if(i) keep[id]=i.value});
+  var h='<h2>Partner sharing</h2>';
+  if(P.state==="loading") h+='<div class="small">Connecting…</div>';
+  else if(P.state==="offline") h+='<div class="small">Partner sharing needs an internet connection. Your own log works as usual.</div>';
+  else if(P.recovery&&uid()){
+    h+='<form id="p-recover" class="onb"><div class="small">Choose a new password for '+esc(uemail())+'.</div>'+
+      '<div class="fields"><label class="field">New password<input type="password" id="p-newpass" autocomplete="new-password" minlength="6" required></label></div>'+
+      '<div class="row"><button class="btn primary" type="submit" id="p-setpass">Save password</button></div></form>';
+  }else if(!uid()){
+    h+='<div class="small">Sign in to share your cycle with a partner, or to see a partner\'s cycle. Your own log stays on this phone either way.</div>'+
+      '<form id="p-auth" class="onb"><div class="fields">'+
+      '<label class="field">Email<input type="email" id="p-email" autocomplete="email" required></label>'+
+      '<label class="field">Password<input type="password" id="p-pass" autocomplete="current-password" minlength="6" required></label></div>'+
+      '<div class="row"><button class="btn primary" id="p-signin" type="submit">Sign in</button>'+
+      '<button class="btn" id="p-signup" type="button">Create account</button>'+
+      '<button class="linkbtn" id="p-forgot" type="button">Forgot password</button></div></form>';
+  }else{
+    var sh=data.share,c=sh.cats;
+    h+='<div class="small">Signed in as <b>'+esc(uemail())+'</b> · <button class="linkbtn" id="p-signout" type="button">Sign out</button></div>';
+    h+='<div class="psec"><p class="lbl">Share my cycle</p>'+
+      '<label class="tog"><input type="checkbox" id="p-on"'+(sh.on?' checked':'')+'>Share with partners I invite</label>';
+    if(sh.on){
+      h+='<label class="field">Name your partner sees<input type="text" id="p-name" maxlength="40" placeholder="e.g. Ananya" value="'+esc(sh.name)+'"></label>'+
+        '<div class="lbl" style="font-size:13px">What they can see</div><div class="catopts">'+
+        catOpt("pred","Predictions","Next period, fertile window, ovulation, cycle day")+
+        catOpt("period","Period days","Flow you log on the calendar")+
+        catOpt("sym","Symptoms and mood","Including your notes")+
+        catOpt("sex","Sexual activity","The blue-heart entries")+
+        '</div><div class="small">Only ticked items leave this phone. Partners can look but never edit.</div>'+
+        '<div class="small" id="p-sync">'+syncText()+'</div>'+
+        '<div class="row"><button class="btn primary" id="p-invite" type="button">'+(P.invite?"Make a new code":"Create invite code")+'</button></div>';
+      if(P.invite){
+        var cc=P.invite.code;
+        h+='<div class="row"><span class="code" id="p-codeshow">'+cc.slice(0,4)+'-'+cc.slice(4)+'</span><button class="btn" id="p-copy" type="button">Copy</button></div>'+
+          '<div class="small">Send this to your partner. It works once and expires in 24 hours. Making a new code cancels this one.</div>';
+      }
+    }
+    if(P.mine.length){
+      h+='<div class="lbl" style="font-size:13px">Who can see your cycle</div><div>';
+      P.mine.forEach(function(m){h+='<div class="prow"><div class="who">'+esc(m.email)+(sh.on?'':'<span class="small">Sharing is off, so they see nothing</span>')+'</div><button class="btn danger" type="button" data-prm="'+esc(m.id)+'">Remove</button></div>'});
+      h+='</div>';
+    }
+    h+='</div><div class="psec"><p class="lbl">See a partner\'s cycle</p>'+
+      '<form id="p-join" class="row"><label class="field">Invite code<input type="text" id="p-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-2345"></label>'+
+      '<button class="btn primary" id="p-joinbtn" type="submit" style="align-self:flex-end">Join</button></form>';
+    if(P.withMe.length){
+      h+='<div>';
+      P.withMe.forEach(function(w){
+        h+='<div class="prow"><div class="who"><b>'+esc(w.name)+'</b><span class="small">'+(w.share?"Updated "+esc(relTime(w.share.updated_at)):"Not sharing right now")+'</span></div>'+
+          '<div class="row"><button class="btn" type="button" data-pview="'+esc(w.id)+'">View</button><button class="btn danger" type="button" data-pleave="'+esc(w.id)+'">Leave</button></div></div>';
+      });
+      h+='</div>';
+    }
+    h+='</div>';
+  }
+  h+='<div id="p-msg" class="pmsg'+(P.err?" err":"")+'" role="status">'+esc(P.msg)+'</div>';
+  el.innerHTML=h;
+  KEEP.forEach(function(id){var i=$(id);if(i&&keep[id]!=null&&id!=="p-name") i.value=keep[id]});
+  if(act){var a=$(act);if(a) a.focus()}
+  renderTabs();
+}
+function catOpt(k,label,sub){
+  return '<label class="catopt"><input type="checkbox" id="p-c-'+k+'" data-cat="'+k+'"'+(data.share.cats[k]?' checked':'')+'><span>'+label+'<small>'+sub+'</small></span></label>';
+}
+
+/* ---------- partner events ---------- */
+document.addEventListener("click",async function(e){
+  var t=e.target.closest("button");if(!t) return;
+  if(t.dataset.tab!==undefined){
+    P.view=t.dataset.tab||null;P.sel=null;var d=new Date(T*DAY);P.vy=d.getUTCFullYear();P.vm=d.getUTCMonth();
+    applyView();window.scrollTo(0,0);return;
+  }
+  if(t.dataset.pn){P.sel=+t.dataset.pn;var d2=new Date(P.sel*DAY);P.vy=d2.getUTCFullYear();P.vm=d2.getUTCMonth();renderPview();var b=$("pd-"+P.sel);if(b)b.focus();return}
+  if(t.id==="pcal-prev"||t.id==="pcal-next"){var m=P.vm+(t.id==="pcal-next"?1:-1);P.vy+=Math.floor(m/12);P.vm=(m%12+12)%12;renderPview();var nb=$(t.id);if(nb)nb.focus();return}
+  if(!P.sb) return;
+  if(t.dataset.pview){P.view=t.dataset.pview;P.sel=null;var d3=new Date(T*DAY);P.vy=d3.getUTCFullYear();P.vm=d3.getUTCMonth();applyView();window.scrollTo(0,0);return}
+  if(t.dataset.prm){
+    if(!window.confirm("Remove this person? They'll lose access to your cycle straight away.")) return;
+    var r=await P.sb.from("partners").delete().eq("owner_id",uid()).eq("partner_id",t.dataset.prm);
+    if(r.error) note(friendly(r.error),true); else note("Removed.");
+    refreshPartners();return;
+  }
+  if(t.dataset.pleave){
+    if(!window.confirm("Stop seeing this person's cycle? You'd need a new invite code to see it again.")) return;
+    var r2=await P.sb.from("partners").delete().eq("owner_id",t.dataset.pleave).eq("partner_id",uid());
+    if(r2.error) note(friendly(r2.error),true); else note("Done.");
+    if(P.view===t.dataset.pleave) P.view=null;
+    refreshPartners();return;
+  }
+  if(t.id==="p-signup"){
+    var em=($("p-email")||{}).value,pw=($("p-pass")||{}).value;
+    if(!em||!pw){note("Enter an email and a password first.",true);return}
+    if(pw.length<6){note("Use a password of at least 6 characters.",true);return}
+    note("Creating your account…");
+    var su=await P.sb.auth.signUp({email:em.trim(),password:pw,options:{emailRedirectTo:siteUrl()}});
+    if(su.error) note(friendly(su.error),true);
+    else if(!su.data.session) note("Check your email and open the confirmation link, then come back here and sign in.");
+    else note("Account created.");
+    return;
+  }
+  if(t.id==="p-forgot"){
+    var em2=($("p-email")||{}).value;
+    if(!em2){note("Type your email above first.",true);return}
+    var fr=await P.sb.auth.resetPasswordForEmail(em2.trim(),{redirectTo:siteUrl()});
+    note(fr.error?friendly(fr.error):"If that email has an account, a reset link is on its way.",!!fr.error);return;
+  }
+  if(t.id==="p-signout"){await P.sb.auth.signOut();note("Signed out.");return}
+  if(t.id==="p-invite"){makeInvite();return}
+  if(t.id==="p-copy"&&P.invite){
+    var txt=P.invite.code.slice(0,4)+"-"+P.invite.code.slice(4);
+    try{await navigator.clipboard.writeText(txt);note("Code copied.")}
+    catch(err){var range=document.createRange();range.selectNodeContents($("p-codeshow"));var sl=getSelection();sl.removeAllRanges();sl.addRange(range);note("Select and copy the code.")}
+    return;
+  }
+});
+document.addEventListener("submit",async function(e){
+  if(!P.sb) return;
+  if(e.target.id==="p-auth"){
+    e.preventDefault();
+    note("Signing in…");
+    var r=await P.sb.auth.signInWithPassword({email:$("p-email").value.trim(),password:$("p-pass").value});
+    note(r.error?friendly(r.error):"",!!r.error);
+  }else if(e.target.id==="p-join"){
+    e.preventDefault();joinCode($("p-code").value);
+  }else if(e.target.id==="p-recover"){
+    e.preventDefault();
+    var u=await P.sb.auth.updateUser({password:$("p-newpass").value});
+    if(u.error) note(friendly(u.error),true); else {P.recovery=false;note("Password updated.");renderPartner()}
+  }
+});
+document.addEventListener("change",function(e){
+  var id=e.target.id;
+  if(id==="p-on"){data.share.on=e.target.checked;P.pushedAt=0;queueSave();pushShare();if(!data.share.on)P.invite=null;renderPartner();return}
+  if(e.target.dataset&&e.target.dataset.cat){data.share.cats[e.target.dataset.cat]=e.target.checked;P.pushedAt=0;queueSave();renderPartner();return}
+  if(id==="p-name"){data.share.name=e.target.value.trim().slice(0,40);queueSave();return}
+});
+document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState!=="visible") return;
+  var t=todayN();if(t!==T){T=t;if(ready)render()}
+  if(uid()) refreshPartners();
+});
+window.addEventListener("online",function(){if(uid()){queuePush();refreshPartners()}});
 
 /* ---------- events ---------- */
 document.addEventListener("click",function(e){
