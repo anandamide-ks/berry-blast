@@ -7,8 +7,8 @@ Each person's log is stored on their own phone. Partner sharing is optional: whe
 
 ## Files
 
-- `index.html` – the whole app
-- `config.js` – your Supabase settings for partner sharing (see below)
+- `index.html` – the whole app: Today, Calendar, Insights and Settings pages, the daily log, partner sharing, and the supervisors Mr Idli Billu Bhayankar Sanyal and Ms Chutney Sanyal
+- `config.js` – your Supabase settings for partner sharing (already filled in with your project's values)
 - `supabase.js` – the Supabase library, kept here so the app works offline
 - `setup.sql` – database setup for partner sharing (run once in Supabase; it doesn't need to be on GitHub, but it does no harm there)
 - `manifest.webmanifest`, `sw.js` – installing and offline use
@@ -36,7 +36,7 @@ Both values in `config.js` are meant to be public. What keeps the data private i
 
 ## How people use it
 
-- **Sharing your cycle:** Partner sharing → sign in or create an account → tick "Share with partners I invite" → choose a name and what to share → **Create invite code** and send the code to your partner. Codes work once and expire after 24 hours.
+- **Sharing your cycle:** Settings → Partner sharing → sign in or create an account → tick "Share with partners I invite" → choose a name and what to share → **Create invite code** and send the code to your partner. Codes work once and expire after 24 hours.
 - **Seeing a partner's cycle:** sign in → type their code under "See a partner's cycle" → **Join**. A tab with their name appears at the top.
 - **Ending access:** the person sharing can **Remove** anyone; a partner can **Leave**. Unticking "Share with partners I invite" deletes the online copy.
 
@@ -49,4 +49,4 @@ New accounts get a confirmation email. On iPhone, the link opens in Safari; afte
 
 ## Updating the app
 
-When you change `index.html` or `config.js`, also change `VERSION` at the top of `sw.js` (for example to `berry-blast-v5`) so installed copies pick up the new version.
+When you change `index.html` or `config.js`, also change `VERSION` at the top of `sw.js` (for example to `berry-blast-v6`) so installed copies pick up the new version.

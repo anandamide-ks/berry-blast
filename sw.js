@@ -1,6 +1,6 @@
 /* Berry Blast offline cache. anandamide.ks
    Bump VERSION whenever index.html changes so installed copies update. */
-const VERSION = "berry-blast-v4";
+const VERSION = "berry-blast-v5";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png", "config.js", "supabase.js"];
 
 self.addEventListener("install", (e) => {
